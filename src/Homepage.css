@@ -1,0 +1,84 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+
+/* FLEX-CENTERED LAYOUT */
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 40px;
+}
+
+/* Title */
+h1 {
+  margin: 0 0 15px 0;
+  font-size: 36px;
+}
+
+/* Date selector */
+.date-select {
+  margin: 0 0 20px 0;
+}
+
+/* Table box */
+.table-container {
+  width: 80%;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th {
+  background: #efefef;
+  padding: 12px;
+  border-bottom: 2px solid #ccc;
+  text-align: left;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+  background: #f1f1f1;
+}
+
+td.emoji {
+  font-size: 22px;
+}
+
+a {
+  color: #0066ff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.table-container {
+  display: flex;
+  justify-content: center; 
+}
+
+table {
+  width: 100%;
+  max-width: 900px;   /* Perfect center visual balance */
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
