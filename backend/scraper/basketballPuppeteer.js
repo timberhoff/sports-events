@@ -17,7 +17,8 @@ async function scrapeBasketball() {
 
   const page = await browser.newPage();
 
-await db.query("DELETE FROM events WHERE sport = 'Basketball'");
+await db.query("DELETE FROM events WHERE sport = 'Basketball' AND source = 'scraper'");
+
 
 
   await page.setUserAgent(
@@ -65,10 +66,9 @@ await db.query("DELETE FROM events WHERE sport = 'Basketball'");
     const title = `${rawHome} vs ${rawAway}`;
 
     try {
-  await db.query(
-    `INSERT INTO events 
-        (sport, title, date, time, home_team_id, away_team_id, location)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  await db.query(`
+  INSERT INTO events (sport, title, date, time, home_team_id, away_team_id, location, source)
+  VALUES (?, ?, ?, ?, ?, ?, ?, 'scraper')`,
     [
       "Basketball",
       title,
@@ -97,3 +97,140 @@ await db.query("DELETE FROM events WHERE sport = 'Basketball'");
 }
 
 scrapeBasketball();
+
+/** -------------------------------------------------------------------------
+ * BASKETBALL SCRAPER — FULL EXPLANATION (FOR STUDY & REFERENCE)
+ *
+ * This file uses Puppeteer to scrape basketball events from the 
+ * EstLatBL website and save them into the MySQL database.
+ *
+ * -------------------------------------------------------------------------
+ * 1. IMPORTS
+ * -------------------------------------------------------------------------
+ * puppeteer      → Controls a real Chromium browser with JavaScript.
+ * db             → MySQL database connection (from db.js).
+ * getTeamIdByCode(code)
+ *                → Looks up a team's numeric ID in the teams table.
+ *
+ * -------------------------------------------------------------------------
+ * 2. MAIN FUNCTION (scrapeBasketball)
+ * -------------------------------------------------------------------------
+ * This function:
+ *  - Launches the browser
+ *  - Opens the game webpage
+ *  - Extracts game rows
+ *  - Converts data into clean format
+ *  - Fetches team IDs from DB
+ *  - Inserts each event into the events table
+ *  - Skips duplicates (using UNIQUE constraint)
+ *  - Closes the browser
+ *
+ * -------------------------------------------------------------------------
+ * 3. LAUNCH BROWSER
+ * -------------------------------------------------------------------------
+ * headless: false → you SEE the browser window (good for debugging)
+ * slowMo: 50      → slows actions down 50ms so you can watch it
+ *
+ * args: no-sandbox, disable-setuid-sandbox, disable-blink-features
+ *     → makes puppeteer more stable and less detectable
+ *
+ * -------------------------------------------------------------------------
+ * 4. OPEN NEW TAB AND SET USER AGENT
+ * -------------------------------------------------------------------------
+ * newPage()      → like opening a new browser tab
+ * setUserAgent() → makes the scraper look like a real user
+ *
+ * -------------------------------------------------------------------------
+ * 5. GO TO TARGET URL
+ * -------------------------------------------------------------------------
+ * page.goto(url, options)
+ * 
+ * waitUntil: "networkidle2"
+ *     → waits until network is quiet (page fully loaded)
+ * timeout: 60000
+ *     → 60 second timeout
+ *
+ * -------------------------------------------------------------------------
+ * 6. WAIT FOR TABLE CONTENTS
+ * -------------------------------------------------------------------------
+ * Waits until the game rows <tr> appear on screen.
+ * Prevents scraping too early before the data loads.
+ *
+ * -------------------------------------------------------------------------
+ * 7. EXTRACT ALL ROWS
+ * -------------------------------------------------------------------------
+ * $$eval(selector, callback)
+ *     → Runs callback inside the browser
+ *     → Returns an array for each <tr>
+ *
+ * Each row becomes something like:
+ * [
+ *   "T 09.12.2025, 20:00",
+ *   "Tallinn, TalTech Spordihoone",
+ *   "",
+ *   "TCH",
+ *   "-",
+ *   "OGR"
+ * ]
+ *
+ * -------------------------------------------------------------------------
+ * 8. LOOP THROUGH ROWS
+ * -------------------------------------------------------------------------
+ * If row length < 6 → skip invalid rows
+ *
+ * Extract:
+ *   dateText → first column ("T 09.12.2025, 20:00")
+ *   location → second column ("Tallinn...Spordihoone")
+ *   rawHome  → home team code ("TCH")
+ *   rawAway  → away team code ("OGR")
+ *
+ * -------------------------------------------------------------------------
+ * 9. PARSE DATE AND TIME
+ * -------------------------------------------------------------------------
+ * Regex extracts:
+ *   day   (09)
+ *   month (12)
+ *   year  (2025)
+ *   time  (20:00)
+ *
+ * Convert to MySQL format:
+ *   YYYY-MM-DD
+ *
+ * Example:
+ *   "2025-12-09"
+ *
+ * -------------------------------------------------------------------------
+ * 10. TEAM ID LOOKUP
+ * -------------------------------------------------------------------------
+ * getTeamIdByCode(rawHome)
+ *     → finds numeric ID for "TCH", "OGR", etc.
+ *
+ * If a team code does not exist → skip event
+ *
+ * -------------------------------------------------------------------------
+ * 11. INSERT EVENT INTO DATABASE (try/catch)
+ * -------------------------------------------------------------------------
+ * INSERT INTO events (sport, title, date, time, home_team_id, away_team_id, location)
+ *
+ * If unique_event constraint catches duplicate:
+ *     → skip it instead of crashing
+ *
+ * This makes the scraper safe to run ANY number of times.
+ *
+ * -------------------------------------------------------------------------
+ * 12. CLOSE BROWSER
+ * -------------------------------------------------------------------------
+ * After scraping all games, browser closes.
+ * Clean, safe exit.
+ *
+ * -------------------------------------------------------------------------
+ * 13. RUN THE SCRAPER
+ * -------------------------------------------------------------------------
+ * scrapeBasketball();
+ *
+ * The function is executed when the file is run with:
+ *     node backend/scraper/basketballPuppeteer.js
+ *
+ * -------------------------------------------------------------------------
+ * END OF DOCUMENTATION
+ * ------------------------------------------------------------------------- */
