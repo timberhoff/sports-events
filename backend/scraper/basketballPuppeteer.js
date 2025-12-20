@@ -3,6 +3,9 @@ import db from "../db.js";
 import { getTeamIdByCode } from "../teamService.js";
 
 async function scrapeBasketball() {
+
+  const league = "Optibet Eesti–Läti Korvpalliliiga";
+
   console.log("Launching browser...");
 
   const browser = await puppeteer.launch({
@@ -67,18 +70,19 @@ await db.query("DELETE FROM events WHERE sport = 'Basketball' AND source = 'scra
 
     try {
   await db.query(`
-  INSERT INTO events (sport, title, date, time, home_team_id, away_team_id, location, source)
-  VALUES (?, ?, ?, ?, ?, ?, ?, 'scraper')`,
-    [
-      "Basketball",
-      title,
-      mysqlDate,
-      time,
-      homeTeamId,
-      awayTeamId,
-      location
-    ]
-  );
+  INSERT INTO events (sport, title, date, time, home_team_id, away_team_id, location, league, source)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scraper')`,
+  [
+    "Basketball",
+    title,
+    mysqlDate,
+    time,
+    homeTeamId,
+    awayTeamId,
+    location,
+    league
+  ]
+);
 
   console.log("Inserted:", title, mysqlDate, time, "@", location);
 
