@@ -20,21 +20,29 @@ app.get("/api/events", async (req, res) => {
         time,
         title,
         location,
-        venue AS city,
-        federation_link AS federation,
-        source,
-        league
-      FROM events
-      ORDER BY date,
-        STR_TO_DATE(IF(time IS NULL OR time='' OR time='—','00:00', time), '%H:%i')
+        city,
+        federation_url AS federation,
+        federation_name,
+        home_team,
+        away_team,
+        league,
+        source
+      FROM v_events_all
+      ORDER BY
+        date,
+        STR_TO_DATE(
+          IF(time IS NULL OR time='' OR time='—','00:00', time),
+          '%H:%i'
+        )
     `);
 
     res.json(rows);
   } catch (err) {
-    console.error("API /api/events error:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to load events" });
   }
 });
+
 
 app.listen(3001, () => {
   console.log("Backend running on http://localhost:3001");

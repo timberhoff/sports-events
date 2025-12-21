@@ -30,13 +30,15 @@ export default function EventsTable({ events }) {
                 <div style={{ fontWeight: 600 }}>
                   {e.home_team && e.away_team
                     ? `${e.home_team} vs ${e.away_team}`
-                    : e.title || e.event}
+                    : e.title}
                 </div>
-                <div style={{ fontSize: "0.85em", opacity: 0.8 }}>
-                  {e.league || ""}
-                </div>
-              </td>
 
+                {e.league && (
+                  <div style={{ fontSize: "0.85em", opacity: 0.8 }}>
+                    {e.league}
+                  </div>
+                )}
+              </td>
               <td>{e.location}</td>
               <td>{e.city}</td>
               <td>
