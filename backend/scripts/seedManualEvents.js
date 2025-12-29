@@ -50,16 +50,30 @@ async function main() {
   });
 
   const sql = `
-    INSERT INTO events_manual
-      (emoji, sport, date, time, title, location, city, tickets, federation_name, federation_url)
-    VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      emoji = VALUES(emoji),
-      tickets = VALUES(tickets),
-      federation_name = VALUES(federation_name),
-      federation_url = VALUES(federation_url)
-  `;
+  INSERT INTO events_manual
+    (
+      emoji, sport, date, time, title,
+      location, venue, city, league,
+      home_team, away_team,
+      tickets, federation_name, federation_url
+    )
+  VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  AS new
+  ON DUPLICATE KEY UPDATE
+    emoji = new.emoji,
+    location = new.location,
+    venue = new.venue,
+    city = new.city,
+    league = new.league,
+    home_team = new.home_team,
+    away_team = new.away_team,
+    tickets = new.tickets,
+    federation_name = new.federation_name,
+    federation_url = new.federation_url
+`;
+
+
 
   let insertedOrUpdated = 0;
 if (!Array.isArray(events)) {
@@ -71,18 +85,34 @@ if (!Array.isArray(events)) {
   for (const e of events) {
     const fed = normalizeFederation(e);
 
-    const row = [
-      cleanDash(e.emoji),
-      cleanDash(e.sport) ?? "Unknown",
-      e.date, // must be YYYY-MM-DD
-      parseTimeToMysql(e.time),
-      cleanDash(e.event) ?? "Untitled",
-      cleanDash(e.location),
-      cleanDash(e.city),
-      cleanDash(e.tickets),
-      fed.federation_name,
-      fed.federation_url,
-    ];
+    const title =
+  cleanDash(e.title) ??
+  cleanDash(e.event) ??
+  (cleanDash(e.homeTeam) && cleanDash(e.awayTeam)
+    ? `${cleanDash(e.homeTeam)} vs ${cleanDash(e.awayTeam)}`
+    : "Untitled");
+
+const row = [
+  cleanDash(e.emoji),
+  cleanDash(e.sport) ?? "Unknown",
+  e.date,
+  parseTimeToMysql(e.time),
+
+  cleanDash(e.event) ?? "Untitled",
+
+  cleanDash(e.location),          // you can keep using this
+  cleanDash(e.venue),             // NEW (optional)
+  cleanDash(e.city),
+  cleanDash(e.league),            // NEW (optional)
+
+  cleanDash(e.homeTeam),          // NEW (optional)
+  cleanDash(e.awayTeam),          // NEW (optional)
+
+  cleanDash(e.tickets),
+  fed.federation_name,
+  fed.federation_url,
+];
+
 
     await db.execute(sql, row);
     insertedOrUpdated++;

@@ -2,7 +2,10 @@ import puppeteer from "puppeteer";
 import db from "../db.js";
 import { getTeamIdByCode } from "../teamService.js";
 
+
 async function scrapeBasketball() {
+const federation_link = "https://www.estlatbl.com/et/mangud";
+
 
   const league = "Optibet Eesti–Läti Korvpalliliiga";
 
@@ -20,7 +23,7 @@ async function scrapeBasketball() {
 
   const page = await browser.newPage();
 
-await db.query("DELETE FROM events WHERE sport = 'Basketball' AND source = 'scraper'");
+
 
 
 
@@ -69,20 +72,44 @@ await db.query("DELETE FROM events WHERE sport = 'Basketball' AND source = 'scra
     const title = `${rawHome} vs ${rawAway}`;
 
     try {
-  await db.query(`
-  INSERT INTO events (sport, title, date, time, home_team_id, away_team_id, location, league, source)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scraper')`,
+  await db.query(
+  `
+  INSERT INTO raw_basketball_events
+    (
+      source,
+      raw_home_team,
+      raw_away_team,
+      raw_venue,
+      raw_city,
+      raw_league,
+      date,
+      time,
+      federation_link,
+      federation_name,
+      ticket_price
+    )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON DUPLICATE KEY UPDATE
+    scraped_at = CURRENT_TIMESTAMP
+  `,
   [
-    "Basketball",
-    title,
+    'basketball_scraper',
+    rawHome,
+    rawAway,
+    location,
+    null,
+    league,
     mysqlDate,
     time,
-    homeTeamId,
-    awayTeamId,
-    location,
-    league
+    federation_link,
+    'EstLatBL',
+    null
   ]
 );
+
+
+
+
 
   console.log("Inserted:", title, mysqlDate, time, "@", location);
 

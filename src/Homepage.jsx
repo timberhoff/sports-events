@@ -55,7 +55,7 @@ export default function Homepage() {
 
   return (
     <div className="wrapper">
-      <h1>Estonia Sports Events</h1>
+      <h1>Eest spordisündmused</h1>
 
       <FilterBar
         sportFilter={sportFilter}

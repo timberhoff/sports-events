@@ -242,6 +242,22 @@ export const events = [
   tickets: "—",
   federation: { name: "Vehklemisliit", link: "https://www.fencing.ee" },
 }
+
+{
+  emoji: "🥋",
+  sport: "Judo",
+  date: "2026-01-17",
+  time: "—",
+  event: "Eesti Meistrivõistlused",
+  venue: "A. Le Coq Spordihoone",     // optional (or keep location)
+  city: "Tartu",
+  league: null,
+  homeTeam: null,                     // optional
+  awayTeam: null,                     // optional
+  federation: "https://www.judo.ee",
+  federationName: "Judoliit",
+}
+
 ];
 
 export default events;
