@@ -1,18 +1,42 @@
 export default function FilterBar({
+  // NEW ↓
+  categoryFilter,
+  setCategoryFilter,
+  categoryOptions,
+
   sportFilter,
   setSportFilter,
   sportOptions,
+
   cityFilter,
   setCityFilter,
   cityOptions,
+
   dateFilter,
   setDateFilter,
+
   onMapClick,
 }) {
   return (
     <div className="filters">
+      {/* CATEGORY */}
       <div className="filter">
-        <label>Spordiala</label>
+        <label>Category</label>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          {categoryOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* SPORT */}
+      <div className="filter">
+        <label>Sport</label>
         <select
           value={sportFilter}
           onChange={(e) => setSportFilter(e.target.value)}
@@ -25,8 +49,9 @@ export default function FilterBar({
         </select>
       </div>
 
+      {/* CITY */}
       <div className="filter">
-        <label>Sorteeri asukoha järgi</label>
+        <label>Filter by location</label>
         <select
           value={cityFilter}
           onChange={(e) => setCityFilter(e.target.value)}
@@ -39,8 +64,9 @@ export default function FilterBar({
         </select>
       </div>
 
+      {/* DATE */}
       <div className="filter">
-        <label>Kuupäev</label>
+        <label>Date</label>
         <input
           type="date"
           value={dateFilter}
@@ -49,7 +75,7 @@ export default function FilterBar({
       </div>
 
       <button className="map-btn" onClick={onMapClick}>
-        Vaata kaarti
+        Check the map
       </button>
     </div>
   );

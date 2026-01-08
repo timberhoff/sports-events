@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function EventsTable({ events }) {
   function formatDateEE(dateStr) {
     if (!dateStr) return "—";
@@ -16,6 +18,7 @@ export default function EventsTable({ events }) {
             <th>Venue</th>
             <th>City</th>
             <th>Federation</th>
+            <th>Broadcast</th>
           </tr>
         </thead>
 
@@ -24,7 +27,12 @@ export default function EventsTable({ events }) {
             <tr key={e.id ?? i}>
               <td className="emoji">{e.emoji}</td>
               <td>{e.sport}</td>
-              <td title={e.date}>{formatDateEE(e.date)}</td>
+              <td title={e.date_end ? `${e.date} → ${e.date_end}` : e.date}>
+                {e.date_end
+                  ? `${formatDateEE(e.date)}–${formatDateEE(e.date_end)}`
+                  : formatDateEE(e.date)}
+              </td>
+
               <td>{e.time}</td>
 
               <td>
@@ -33,14 +41,30 @@ export default function EventsTable({ events }) {
                     ? `${e.home_team} vs ${e.away_team}`
                     : e.title}
                 </div>
-                {e.league && (
+
+                {/* subtitle ONLY for non-team sports */}
+                {!e.home_team && !e.away_team && e.subtitle && (
                   <div style={{ fontSize: "0.85em", opacity: 0.8 }}>
+                    {e.subtitle}
+                  </div>
+                )}
+
+                {/* league ONLY for team sports */}
+                {e.home_team && e.away_team && e.league && (
+                  <div style={{ fontSize: "0.75em", opacity: 0.6 }}>
                     {e.league}
                   </div>
                 )}
               </td>
 
-              <td>{e.venue || "—"}</td>
+              <td>
+                {e.venue_id ? (
+                  <Link to={`/venues/${e.venue_id}`}>{e.venue || "—"}</Link>
+                ) : (
+                  e.venue || "—"
+                )}
+              </td>
+
               <td>{e.city || "—"}</td>
 
               <td>
