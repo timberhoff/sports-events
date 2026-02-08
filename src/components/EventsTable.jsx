@@ -18,7 +18,6 @@ export default function EventsTable({ events }) {
             <th>Venue</th>
             <th>City</th>
             <th>Federation</th>
-            <th>Broadcast</th>
           </tr>
         </thead>
 
