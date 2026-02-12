@@ -9,6 +9,72 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/api/sports", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT id, name, slug, emoji
+      FROM sports
+      ORDER BY name;
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load sports" });
+  }
+});
+
+function buildTree(flatRows) {
+  const byId = new Map();
+  const roots = [];
+
+  for (const r of flatRows) {
+    byId.set(r.id, { ...r, children: [] });
+  }
+
+  for (const r of flatRows) {
+    const node = byId.get(r.id);
+    if (r.parent_id == null) {
+      roots.push(node);
+    } else {
+      const parent = byId.get(r.parent_id);
+      if (parent) parent.children.push(node);
+      else roots.push(node); // safety fallback
+    }
+  }
+
+  // optional: sort children by sort_order then name
+  const sortRec = (nodes) => {
+    nodes.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
+    nodes.forEach(n => sortRec(n.children));
+  };
+  sortRec(roots);
+
+  return roots;
+}
+
+app.get("/api/league-tree", async (req, res) => {
+  try {
+    const sportId = Number(req.query.sport_id);
+    if (!sportId) return res.status(400).json({ error: "sport_id is required" });
+
+    const [rows] = await db.query(
+      `
+      SELECT id, sport_id, parent_id, name, node_type, is_default, sort_order
+      FROM league_nodes
+      WHERE sport_id = ?
+      ORDER BY sort_order, name
+      `,
+      [sportId]
+    );
+
+    res.json(buildTree(rows));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load league tree" });
+  }
+});
+
+
 app.get("/api/admin/manual-events", async (req, res) => {
   try {
     const [rows] = await db.query(`

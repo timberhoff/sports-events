@@ -1,3 +1,5 @@
+import SportLeagueDropdown from "./SportLeagueDropdown";
+
 export default function FilterBar({
   // NEW ↓
   categoryFilter,
@@ -36,17 +38,7 @@ export default function FilterBar({
 
       {/* SPORT */}
       <div className="filter">
-        <label>Sport</label>
-        <select
-          value={sportFilter}
-          onChange={(e) => setSportFilter(e.target.value)}
-        >
-          {sportOptions.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <SportLeagueDropdown />
       </div>
 
       {/* CITY */}

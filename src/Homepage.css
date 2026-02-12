@@ -113,3 +113,98 @@ table {
   padding: 0 14px;
   cursor: pointer;
 }
+
+.sport-league-dropdown {
+  position: relative;
+  min-width: 220px;
+}
+
+.sport-dropdown-btn {
+  width: 220px;
+  text-align: left;
+  padding: 7px 10px;
+  border: 1px solid #777;
+  background: white;
+  cursor: pointer;
+}
+
+.sport-dropdown-panel {
+  position: absolute;
+  z-index: 9999;
+  width: 420px;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #777;
+  background: white;
+  margin-top: 6px;
+  padding: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+}
+
+.panel-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.panel-btn {
+  padding: 6px 10px;
+  border: 1px solid #777;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.sport-row {
+  margin-bottom: 6px;
+}
+
+.sport-row-main,
+.tree-node-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+.arrow-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.arrow-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.name-btn {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.is-green {
+  background: rgba(0, 160, 70, 0.12);
+}
+
+.is-gray {
+  background: rgba(120, 120, 120, 0.12);
+  color: #666;
+}
+
+.sport-children {
+  padding-left: 18px;
+  margin-top: 4px;
+}
+
+.muted {
+  color: #777;
+  padding: 6px 4px;
+  font-size: 13px;
+}
