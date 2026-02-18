@@ -227,18 +227,49 @@ export default function SportLeagueDropdown({
     setExpandedSports(new Set());
     setExpandedNodes(new Set());
   };
+  const collectSubtreeIds = (node) => {
+    const ids = [node.id];
+    if (node.children?.length) {
+      for (const ch of node.children) ids.push(...collectSubtreeIds(ch));
+    }
+    return ids;
+  };
+
+  const isSubtreeFullyEnabled = (node, disabledSet) => {
+    const ids = collectSubtreeIds(node);
+    return ids.every((id) => !disabledSet.has(id));
+  };
+
+  const setSubtreeEnabled = (node, enabled) => {
+    const ids = collectSubtreeIds(node);
+
+    setDisabledNodes((prev) => {
+      const next = new Set(prev);
+
+      if (enabled) {
+        // enable => remove disabled flags
+        ids.forEach((id) => next.delete(id));
+      } else {
+        // disable => add disabled flags
+        ids.forEach((id) => next.add(id));
+      }
+
+      return next;
+    });
+  };
 
   return (
     <div className="sport-league-dropdown" ref={panelRef}>
       <label>Sport</label>
-
-      <button
-        type="button"
-        className="sport-dropdown-btn"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {summaryText} <span className="caret">▾</span>
-      </button>
+      <div>
+        <button
+          type="button"
+          className="sport-dropdown-btn"
+          onClick={() => setOpen((v) => !v)}
+        >
+          {summaryText} <span className="caret">▾</span>
+        </button>
+      </div>
 
       {open && (
         <div className="sport-dropdown-panel">
@@ -306,6 +337,9 @@ export default function SportLeagueDropdown({
                               isNodeDisabled(id) || sportDisabled
                             }
                             onToggleDisabled={toggleNodeDisabled}
+                            disabledNodes={disabledNodes}
+                            onSetSubtreeEnabled={setSubtreeEnabled}
+                            isSubtreeFullyEnabledFn={isSubtreeFullyEnabled}
                           />
                         ))}
                     </div>
@@ -327,10 +361,15 @@ function TreeNode({
   onToggleExpand,
   isDisabled,
   onToggleDisabled,
+  disabledNodes,
+  onSetSubtreeEnabled,
+  isSubtreeFullyEnabledFn,
 }) {
   const hasChildren = node.children && node.children.length > 0;
   const expanded = expandedNodes.has(node.id);
   const disabled = isDisabled(node.id);
+  const subtreeAllEnabled =
+    hasChildren && isSubtreeFullyEnabledFn(node, disabledNodes);
 
   return (
     <div className="tree-node" style={{ marginLeft: depth * 14 }}>
@@ -353,6 +392,25 @@ function TreeNode({
         >
           {node.name}
         </button>
+        {/* NEW RIGHT-SIDE BUTTON */}
+        {hasChildren && (
+          <button
+            type="button"
+            className="subtree-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              // if all enabled -> deselect all (disable subtree)
+              onSetSubtreeEnabled(node, !subtreeAllEnabled);
+            }}
+            title={
+              subtreeAllEnabled
+                ? "Deselect all in this branch"
+                : "Select all in this branch"
+            }
+          >
+            {subtreeAllEnabled ? "Deselect all" : "Select all"}
+          </button>
+        )}
       </div>
 
       {hasChildren && expanded && (
@@ -366,6 +424,9 @@ function TreeNode({
               onToggleExpand={onToggleExpand}
               isDisabled={(id) => disabled || isDisabled(id)} // cascade gray for UI/logic
               onToggleDisabled={onToggleDisabled}
+              disabledNodes={disabledNodes}
+              onSetSubtreeEnabled={onSetSubtreeEnabled}
+              isSubtreeFullyEnabledFn={isSubtreeFullyEnabledFn}
             />
           ))}
         </div>
