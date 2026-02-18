@@ -52,6 +52,8 @@ function buildTree(flatRows) {
   return roots;
 }
 
+
+
 app.get("/api/league-tree", async (req, res) => {
   try {
     const sportId = Number(req.query.sport_id);
@@ -463,10 +465,12 @@ const [rows] = await db.query(`
     e.id,
     e.emoji,
     e.sport,
+    e.sport_id,
     e.date,
     e.date_end,
     e.time,
     e.league,
+    lna.node_id AS league_node_id,
     e.subtitle,
     e.venue_id,
 
@@ -487,11 +491,16 @@ const [rows] = await db.query(`
     e.federation_name AS federationName,
 
     scats.categories AS categories
+
   FROM events e
   LEFT JOIN teams ht ON ht.id = e.home_team_id
   LEFT JOIN teams at ON at.id = e.away_team_id
   LEFT JOIN venues v ON v.id = e.venue_id
   LEFT JOIN cities c ON c.id = v.city_id
+
+  LEFT JOIN league_node_aliases lna
+    ON lna.sport_id = e.sport_id
+   AND LOWER(lna.alias) = LOWER(TRIM(e.league))
 
   LEFT JOIN (
     SELECT
@@ -537,6 +546,37 @@ app.get("/api/venues/:id", async (req, res) => {
   }
 });
 
+app.get("/api/debug/unmapped-leagues", async (req, res) => {
+  try {
+    const sportId = Number(req.query.sport_id) || null;
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        e.sport_id,
+        e.sport,
+        TRIM(e.league) AS league_text,
+        COUNT(*) AS event_count
+      FROM events e
+      LEFT JOIN league_node_aliases lna
+        ON lna.sport_id = e.sport_id
+       AND LOWER(lna.alias) = LOWER(TRIM(e.league))
+      WHERE e.league IS NOT NULL
+        AND TRIM(e.league) <> ''
+        AND lna.node_id IS NULL
+        ${sportId ? "AND e.sport_id = ?" : ""}
+      GROUP BY e.sport_id, e.sport, league_text
+      ORDER BY event_count DESC, league_text ASC;
+      `,
+      sportId ? [sportId] : []
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to list unmapped leagues" });
+  }
+});
 
 app.listen(3001, () => {
   console.log("Backend running on http://localhost:3001");

@@ -6,10 +6,6 @@ export default function FilterBar({
   setCategoryFilter,
   categoryOptions,
 
-  sportFilter,
-  setSportFilter,
-  sportOptions,
-
   cityFilter,
   setCityFilter,
   cityOptions,
@@ -18,6 +14,7 @@ export default function FilterBar({
   setDateFilter,
 
   onMapClick,
+  onLeagueStateChange,
 }) {
   return (
     <div className="filters">
@@ -38,7 +35,7 @@ export default function FilterBar({
 
       {/* SPORT */}
       <div className="filter">
-        <SportLeagueDropdown />
+        <SportLeagueDropdown onStateChange={onLeagueStateChange} />
       </div>
 
       {/* CITY */}

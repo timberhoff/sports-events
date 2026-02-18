@@ -4,11 +4,34 @@ import FilterBar from "./components/FilterBar";
 import EventsTable from "./components/EventsTable";
 
 export default function Homepage() {
+  const [leagueState, setLeagueState] = useState({});
+  const allowedLeagueIds = leagueState?.allowedLeagueIds || [];
   const [events, setEvents] = useState([]);
-  const [sportFilter, setSportFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [cityFilter, setCityFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
+  const disabledSportsSet = useMemo(
+    () => new Set(leagueState?.disabledSports || []),
+    [leagueState]
+  );
+
+  const loadedSportsSet = useMemo(
+    () => new Set(leagueState?.loadedSports || []),
+    [leagueState]
+  );
+
+  const allowedSet = useMemo(
+    () => new Set(allowedLeagueIds || []),
+    [allowedLeagueIds]
+  );
+
+  useEffect(() => {
+    console.log(
+      "allowedLeagueIds:",
+      allowedLeagueIds.length,
+      allowedLeagueIds.slice(0, 10)
+    );
+  }, [allowedLeagueIds]);
 
   useEffect(() => {
     fetch("http://localhost:3001/api/events")
@@ -26,11 +49,9 @@ export default function Homepage() {
       });
   }, []);
 
-  const sportOptions = useMemo(() => {
-    const unique = Array.from(
-      new Set(events.map((e) => e.sport).filter(Boolean))
-    ).sort();
-    return ["All", ...unique];
+  useEffect(() => {
+    const fb = events.find((e) => e.sport === "Football");
+    if (fb) console.log("SAMPLE FOOTBALL EVENT:", fb);
   }, [events]);
 
   const categoryOptions = useMemo(() => {
@@ -66,8 +87,17 @@ export default function Homepage() {
 
   const visibleEvents = useMemo(() => {
     const filtered = events.filter((e) => {
-      const sportOk = sportFilter === "All" || e.sport === sportFilter;
+      // 1) sport gray = always excluded
+      const sportOk = !disabledSportsSet.has(e.sport_id);
 
+      // 2) apply league filtering ONLY if that sport’s tree is loaded
+      const leagueOk = !loadedSportsSet.has(e.sport_id)
+        ? true
+        : e.league_node_id == null
+        ? true // keep showing unmapped while you build aliases
+        : allowedSet.has(e.league_node_id);
+
+      // existing filters
       const cats = e.categories
         ? e.categories.split(",").map((x) => x.trim())
         : [];
@@ -77,11 +107,10 @@ export default function Homepage() {
       const cityOk = cityFilter === "All" || e.city === cityFilter;
       const dateOk = !dateFilter || e.date === dateFilter;
 
-      // ✅ keep event if it hasn't ended yet
-      const endDate = e.date_end || e.date; // YYYY-MM-DD
+      const endDate = e.date_end || e.date;
       const notPast = !endDate || endDate >= todayYMD;
 
-      return sportOk && categoryOk && cityOk && dateOk && notPast;
+      return sportOk && leagueOk && categoryOk && cityOk && dateOk && notPast;
     });
 
     return [...filtered].sort((a, b) => {
@@ -89,7 +118,14 @@ export default function Homepage() {
       const bDT = new Date(`${b.date}T${normalizeTime(b.time)}`);
       return aDT - bDT;
     });
-  }, [events, sportFilter, categoryFilter, cityFilter, dateFilter, todayYMD]);
+  }, [
+    events,
+    allowedLeagueIds,
+    categoryFilter,
+    cityFilter,
+    dateFilter,
+    todayYMD,
+  ]);
 
   const handleMapClick = () => alert("Kaart tuleb hiljem 😄");
 
@@ -101,15 +137,13 @@ export default function Homepage() {
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
         categoryOptions={categoryOptions}
-        sportFilter={sportFilter}
-        setSportFilter={setSportFilter}
-        sportOptions={sportOptions}
         cityFilter={cityFilter}
         setCityFilter={setCityFilter}
         cityOptions={cityOptions}
         dateFilter={dateFilter}
         setDateFilter={setDateFilter}
         onMapClick={handleMapClick}
+        onLeagueStateChange={setLeagueState}
       />
 
       <EventsTable events={visibleEvents} />

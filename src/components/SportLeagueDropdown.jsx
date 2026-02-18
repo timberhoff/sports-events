@@ -50,16 +50,29 @@ export default function SportLeagueDropdown({
 
   // ---- Persist state whenever it changes ----
   useEffect(() => {
+    const loadedSports = Object.keys(leagueTreesBySport).map(Number);
+    const allowedLeagueIds = collectAllowedLeagueIds({
+      sports,
+      leagueTreesBySport,
+      disabledSports,
+      disabledNodes,
+    });
+
     const payload = {
       disabledSports: Array.from(disabledSports),
       disabledNodes: Array.from(disabledNodes),
       expandedSports: Array.from(expandedSports),
       expandedNodes: Array.from(expandedNodes),
+      allowedLeagueIds,
+      loadedSports,
     };
+
     localStorage.setItem(storageKey, JSON.stringify(payload));
 
     onStateChange?.(payload);
   }, [
+    sports,
+    leagueTreesBySport,
     disabledSports,
     disabledNodes,
     expandedSports,
@@ -67,6 +80,43 @@ export default function SportLeagueDropdown({
     storageKey,
     onStateChange,
   ]);
+
+  function collectAllowedLeagueIds({
+    sports,
+    leagueTreesBySport,
+    disabledSports,
+    disabledNodes,
+  }) {
+    const allowed = [];
+
+    for (const sp of sports) {
+      if (disabledSports.has(sp.id)) continue;
+
+      const tree = leagueTreesBySport[sp.id];
+      if (!tree) continue;
+
+      const walk = (nodes, ancestorDisabled = false) => {
+        for (const n of nodes) {
+          const currentDisabled = ancestorDisabled || disabledNodes.has(n.id);
+
+          const isLeaf = !n.children || n.children.length === 0;
+          const isSelectable = n.node_type === "league" || isLeaf;
+
+          if (isSelectable && !currentDisabled) {
+            allowed.push(n.id);
+          }
+
+          if (n.children?.length) {
+            walk(n.children, currentDisabled);
+          }
+        }
+      };
+
+      walk(tree, false);
+    }
+
+    return allowed;
+  }
 
   // ---- Close dropdown when clicking outside ----
   useEffect(() => {
@@ -118,6 +168,25 @@ export default function SportLeagueDropdown({
         );
         const tree = await r.json();
         setLeagueTreesBySport((p) => ({ ...p, [sportId]: tree }));
+
+        // Apply default gray state only first time
+        setDisabledNodes((prev) => {
+          const next = new Set(prev);
+
+          const markDefaults = (nodes) => {
+            for (const n of nodes) {
+              if (n.is_default === 0) {
+                next.add(n.id);
+              }
+              if (n.children?.length) {
+                markDefaults(n.children);
+              }
+            }
+          };
+
+          markDefaults(tree);
+          return next;
+        });
       } finally {
         setLoadingSportTree((p) => ({ ...p, [sportId]: false }));
       }
