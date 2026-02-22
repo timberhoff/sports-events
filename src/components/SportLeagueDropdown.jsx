@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+console.log("SportLeagueDropdown file loaded");
 
 /**
  * Props:
@@ -16,6 +17,9 @@ export default function SportLeagueDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
+  const [didHydrate, setDidHydrate] = useState(false);
+
+  const initializedSportsRef = useRef(new Set());
 
   const [sports, setSports] = useState([]);
   const [leagueTreesBySport, setLeagueTreesBySport] = useState({}); // sportId -> tree array
@@ -30,27 +34,43 @@ export default function SportLeagueDropdown({
   const [disabledNodes, setDisabledNodes] = useState(new Set());
   const [expandedSports, setExpandedSports] = useState(new Set());
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [initializedSports, setInitializedSports] = useState(new Set());
+  useEffect(() => {
+    initializedSportsRef.current = initializedSports;
+  }, [initializedSports]);
 
   // ---- Load persisted state on mount ----
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      console.log("LOAD raw:", raw);
 
-      setDisabledSports(new Set(parsed.disabledSports || []));
-      setDisabledNodes(new Set(parsed.disabledNodes || []));
-      setExpandedSports(new Set(parsed.expandedSports || []));
-      setExpandedNodes(new Set(parsed.expandedNodes || []));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        console.log("LOAD parsed:", parsed);
+
+        setDisabledSports(new Set(parsed.disabledSports || []));
+        setDisabledNodes(new Set(parsed.disabledNodes || []));
+        setExpandedSports(new Set(parsed.expandedSports || []));
+        setExpandedNodes(new Set(parsed.expandedNodes || []));
+
+        const init = new Set(parsed.initializedSports || []);
+        setInitializedSports(init);
+        initializedSportsRef.current = init;
+      }
     } catch (e) {
       console.warn("Failed to load filter state:", e);
+    } finally {
+      setDidHydrate(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageKey]);
 
   // ---- Persist state whenever it changes ----
   useEffect(() => {
+    if (!didHydrate) return;
+
     const loadedSports = Object.keys(leagueTreesBySport).map(Number);
+
     const allowedLeagueIds = collectAllowedLeagueIds({
       sports,
       leagueTreesBySport,
@@ -63,20 +83,23 @@ export default function SportLeagueDropdown({
       disabledNodes: Array.from(disabledNodes),
       expandedSports: Array.from(expandedSports),
       expandedNodes: Array.from(expandedNodes),
+      initializedSports: Array.from(initializedSports),
       allowedLeagueIds,
       loadedSports,
     };
 
+    console.log("SAVING", payload);
     localStorage.setItem(storageKey, JSON.stringify(payload));
-
     onStateChange?.(payload);
   }, [
+    didHydrate,
     sports,
     leagueTreesBySport,
     disabledSports,
     disabledNodes,
     expandedSports,
     expandedNodes,
+    initializedSports,
     storageKey,
     onStateChange,
   ]);
@@ -139,6 +162,59 @@ export default function SportLeagueDropdown({
     })();
   }, []);
 
+  useEffect(() => {
+    if (!didHydrate) return;
+    if (!sports.length) return;
+
+    // for each expanded sport, ensure its tree is loaded
+    expandedSports.forEach((sportId) => {
+      if (leagueTreesBySport[sportId]) return;
+      if (loadingSportTree[sportId]) return;
+
+      (async () => {
+        try {
+          setLoadingSportTree((p) => ({ ...p, [sportId]: true }));
+          const r = await fetch(
+            `http://localhost:3001/api/league-tree?sport_id=${sportId}`
+          );
+          const tree = await r.json();
+          setLeagueTreesBySport((p) => ({ ...p, [sportId]: tree }));
+
+          // Apply defaults only if not initialized before
+          if (!initializedSportsRef.current.has(sportId)) {
+            setDisabledNodes((prev) => {
+              const next = new Set(prev);
+
+              const markDefaults = (nodes) => {
+                for (const n of nodes) {
+                  if (n.is_default === 0) next.add(n.id);
+                  if (n.children?.length) markDefaults(n.children);
+                }
+              };
+
+              markDefaults(tree);
+              return next;
+            });
+
+            setInitializedSports((prev) => {
+              const next = new Set(prev);
+              next.add(sportId);
+              return next;
+            });
+          }
+        } finally {
+          setLoadingSportTree((p) => ({ ...p, [sportId]: false }));
+        }
+      })();
+    });
+  }, [
+    didHydrate,
+    sports,
+    expandedSports,
+    leagueTreesBySport,
+    loadingSportTree,
+  ]);
+
   // ---- Helpers ----
   const isSportDisabled = (sportId) => disabledSports.has(sportId);
 
@@ -168,25 +244,27 @@ export default function SportLeagueDropdown({
         );
         const tree = await r.json();
         setLeagueTreesBySport((p) => ({ ...p, [sportId]: tree }));
+        if (!initializedSportsRef.current.has(sportId)) {
+          setDisabledNodes((prev) => {
+            const next = new Set(prev);
 
-        // Apply default gray state only first time
-        setDisabledNodes((prev) => {
-          const next = new Set(prev);
-
-          const markDefaults = (nodes) => {
-            for (const n of nodes) {
-              if (n.is_default === 0) {
-                next.add(n.id);
+            const markDefaults = (nodes) => {
+              for (const n of nodes) {
+                if (n.is_default === 0) next.add(n.id);
+                if (n.children?.length) markDefaults(n.children);
               }
-              if (n.children?.length) {
-                markDefaults(n.children);
-              }
-            }
-          };
+            };
 
-          markDefaults(tree);
-          return next;
-        });
+            markDefaults(tree);
+            return next;
+          });
+
+          setInitializedSports((prev) => {
+            const next = new Set(prev);
+            next.add(sportId);
+            return next;
+          });
+        }
       } finally {
         setLoadingSportTree((p) => ({ ...p, [sportId]: false }));
       }
@@ -226,7 +304,9 @@ export default function SportLeagueDropdown({
     setDisabledNodes(new Set());
     setExpandedSports(new Set());
     setExpandedNodes(new Set());
+    setInitializedSports(new Set());
   };
+
   const collectSubtreeIds = (node) => {
     const ids = [node.id];
     if (node.children?.length) {

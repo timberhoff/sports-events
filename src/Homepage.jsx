@@ -49,11 +49,6 @@ export default function Homepage() {
       });
   }, []);
 
-  useEffect(() => {
-    const fb = events.find((e) => e.sport === "Football");
-    if (fb) console.log("SAMPLE FOOTBALL EVENT:", fb);
-  }, [events]);
-
   const categoryOptions = useMemo(() => {
     const all = events
       .flatMap((e) =>
