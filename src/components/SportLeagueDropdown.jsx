@@ -35,6 +35,22 @@ export default function SportLeagueDropdown({
   const [expandedSports, setExpandedSports] = useState(new Set());
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [initializedSports, setInitializedSports] = useState(new Set());
+  const enableSport = (sportId) => {
+    setDisabledSports((prev) => {
+      const next = new Set(prev);
+      next.delete(sportId);
+      return next;
+    });
+  };
+
+  const enableNodes = (ids) => {
+    setDisabledNodes((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+
   useEffect(() => {
     initializedSportsRef.current = initializedSports;
   }, [initializedSports]);
@@ -411,6 +427,9 @@ export default function SportLeagueDropdown({
                             key={node.id}
                             node={node}
                             depth={0}
+                            ancestors={[]} // ✅ NEW
+                            sportId={sp.id} // ✅ NEW
+                            sportDisabled={sportDisabled} // ✅ NEW
                             expandedNodes={expandedNodes}
                             onToggleExpand={toggleNodeExpanded}
                             isDisabled={(id) =>
@@ -420,6 +439,8 @@ export default function SportLeagueDropdown({
                             disabledNodes={disabledNodes}
                             onSetSubtreeEnabled={setSubtreeEnabled}
                             isSubtreeFullyEnabledFn={isSubtreeFullyEnabled}
+                            onEnableNodes={enableNodes} // ✅ NEW
+                            onEnableSport={enableSport} // ✅ NEW
                           />
                         ))}
                     </div>
@@ -433,10 +454,12 @@ export default function SportLeagueDropdown({
     </div>
   );
 }
-
 function TreeNode({
   node,
   depth,
+  ancestors, // ✅ NEW
+  sportId, // ✅ NEW
+  sportDisabled, // ✅ NEW
   expandedNodes,
   onToggleExpand,
   isDisabled,
@@ -444,12 +467,17 @@ function TreeNode({
   disabledNodes,
   onSetSubtreeEnabled,
   isSubtreeFullyEnabledFn,
+  onEnableNodes, // ✅ NEW
+  onEnableSport, // ✅ NEW
 }) {
   const hasChildren = node.children && node.children.length > 0;
   const expanded = expandedNodes.has(node.id);
   const disabled = isDisabled(node.id);
+
   const subtreeAllEnabled =
     hasChildren && isSubtreeFullyEnabledFn(node, disabledNodes);
+
+  const fullPathIds = [...ancestors, node.id]; // ✅ parents + self
 
   return (
     <div className="tree-node" style={{ marginLeft: depth * 14 }}>
@@ -467,19 +495,29 @@ function TreeNode({
         <button
           type="button"
           className="name-btn"
-          onClick={() => onToggleDisabled(node.id)}
+          onClick={() => {
+            if (disabled) {
+              // ✅ If it’s gray because of parent/sport (or itself),
+              // enable parents + self (and sport if needed)
+              onEnableNodes(fullPathIds);
+              if (sportDisabled) onEnableSport(sportId);
+              return;
+            }
+
+            // normal behavior when already enabled
+            onToggleDisabled(node.id);
+          }}
           title="Toggle include/exclude"
         >
           {node.name}
         </button>
-        {/* NEW RIGHT-SIDE BUTTON */}
+
         {hasChildren && (
           <button
             type="button"
             className="subtree-btn"
             onClick={(e) => {
               e.stopPropagation();
-              // if all enabled -> deselect all (disable subtree)
               onSetSubtreeEnabled(node, !subtreeAllEnabled);
             }}
             title={
@@ -500,13 +538,18 @@ function TreeNode({
               key={child.id}
               node={child}
               depth={depth + 1}
+              ancestors={fullPathIds} // ✅ NEW: pass path down
+              sportId={sportId}
+              sportDisabled={sportDisabled}
               expandedNodes={expandedNodes}
               onToggleExpand={onToggleExpand}
-              isDisabled={(id) => disabled || isDisabled(id)} // cascade gray for UI/logic
+              isDisabled={(id) => disabled || isDisabled(id)} // keep cascade
               onToggleDisabled={onToggleDisabled}
               disabledNodes={disabledNodes}
               onSetSubtreeEnabled={onSetSubtreeEnabled}
               isSubtreeFullyEnabledFn={isSubtreeFullyEnabledFn}
+              onEnableNodes={onEnableNodes}
+              onEnableSport={onEnableSport}
             />
           ))}
         </div>

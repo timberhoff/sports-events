@@ -1,7 +1,7 @@
 import SportLeagueDropdown from "./SportLeagueDropdown";
+import DateSelector from "./DateSelector";
 
 export default function FilterBar({
-  // NEW ↓
   categoryFilter,
   setCategoryFilter,
   categoryOptions,
@@ -53,15 +53,8 @@ export default function FilterBar({
         </select>
       </div>
 
-      {/* DATE */}
-      <div className="filter">
-        <label>Date</label>
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-        />
-      </div>
+      {/* DATE (single) */}
+      <DateSelector date={dateFilter} setDate={setDateFilter} />
 
       <button className="map-btn" onClick={onMapClick}>
         Check the map

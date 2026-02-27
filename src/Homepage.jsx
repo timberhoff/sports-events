@@ -80,11 +80,30 @@ export default function Homepage() {
 
   const todayYMD = ymd(new Date());
 
+  const toYmd = (value) => {
+    if (!value) return "";
+    const s = String(value).trim();
+
+    // If it's a plain date like "2026-02-28" (or MySQL "2026-02-28 12:34:56")
+    // treat it as already-local date and just take the date part.
+    if (s.length >= 10 && s[4] === "-" && s[7] === "-" && !s.includes("T")) {
+      return s.slice(0, 10);
+    }
+
+    // If it's ISO (has "T", maybe ends with Z), parse and convert to LOCAL date
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
   const visibleEvents = useMemo(() => {
     const filtered = events.filter((e) => {
       // 1) sport gray = always excluded
       const sportOk = !disabledSportsSet.has(e.sport_id);
-
       // 2) apply league filtering ONLY if that sport’s tree is loaded
       const leagueOk = !loadedSportsSet.has(e.sport_id)
         ? true
@@ -100,10 +119,11 @@ export default function Homepage() {
         categoryFilter === "All" || cats.includes(categoryFilter);
 
       const cityOk = cityFilter === "All" || e.city === cityFilter;
-      const dateOk = !dateFilter || e.date === dateFilter;
+      const eventDay = toYmd(e.date);
+      const dateOk = !dateFilter || eventDay >= dateFilter;
 
-      const endDate = e.date_end || e.date;
-      const notPast = !endDate || endDate >= todayYMD;
+      const endDay = toYmd(e.date_end || e.date);
+      const notPast = !endDay || endDay >= todayYMD;
 
       return sportOk && leagueOk && categoryOk && cityOk && dateOk && notPast;
     });
