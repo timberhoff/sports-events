@@ -20,10 +20,17 @@ function PickLocation({ enabled, onPick }) {
 
 /** Safe formatter for your popup */
 function formatEventDateTime(e) {
-  // Your dates are ISO strings from MySQL like "2026-03-08T22:00:00.000Z"
-  const datePart = e?.date ? String(e.date).slice(0, 10) : "";
-  const timePart = e?.time ? String(e.time).slice(0, 5) : "";
-  return `${datePart}${timePart ? " " + timePart : ""}`.trim();
+  if (!e?.date) return "";
+
+  const d = new Date(e.date);
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  const timePart = e?.time ? ` ${e.time.slice(0, 5)}` : "";
+
+  return `${day}.${m}.${y}${timePart}`;
 }
 
 /** Group events by coordinate so one marker can represent many events */
