@@ -15,6 +15,7 @@ export default function FilterBar({
 
   onMapClick,
   onLeagueStateChange,
+  showMap,
 }) {
   return (
     <div className="filters">
@@ -57,7 +58,7 @@ export default function FilterBar({
       <DateSelector date={dateFilter} setDate={setDateFilter} />
 
       <button className="map-btn" onClick={onMapClick}>
-        Check the map
+        {showMap ? "Hide map" : "Check the map"}
       </button>
     </div>
   );

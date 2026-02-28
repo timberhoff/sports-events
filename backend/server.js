@@ -485,7 +485,13 @@ const [rows] = await db.query(`
     END AS title,
 
     COALESCE(v.name, e.venue) AS venue,
-    COALESCE(c.name, e.city)  AS city,
+COALESCE(c.name, e.city)  AS city,
+
+v.lat AS venue_lat,
+v.lng AS venue_lng,
+c.lat AS city_lat,
+c.lng AS city_lng,
+
 
     e.federation_link AS federation,
     e.federation_name AS federationName,
@@ -497,6 +503,8 @@ const [rows] = await db.query(`
   LEFT JOIN teams at ON at.id = e.away_team_id
   LEFT JOIN venues v ON v.id = e.venue_id
   LEFT JOIN cities c ON c.id = v.city_id
+
+ 
 
   LEFT JOIN league_node_aliases lna
     ON lna.sport_id = e.sport_id

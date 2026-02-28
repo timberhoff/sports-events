@@ -2,14 +2,25 @@ import { useMemo, useState, useEffect } from "react";
 import "./Homepage.css";
 import FilterBar from "./components/FilterBar";
 import EventsTable from "./components/EventsTable";
+import EventsMap from "./components/EventsMap";
+import MapFilterBar from "./components/MapFilterBar";
 
 export default function Homepage() {
   const [leagueState, setLeagueState] = useState({});
   const allowedLeagueIds = leagueState?.allowedLeagueIds || [];
   const [events, setEvents] = useState([]);
+
+  const [showMap, setShowMap] = useState(false);
+
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [cityFilter, setCityFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
+
+  // MAP STATE
+  const [userPos, setUserPos] = useState(null); // {lat, lng} or null
+  const [pickMode, setPickMode] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(30);
+
   const disabledSportsSet = useMemo(
     () => new Set(leagueState?.disabledSports || []),
     [leagueState]
@@ -140,9 +151,123 @@ export default function Homepage() {
     cityFilter,
     dateFilter,
     todayYMD,
+    disabledSportsSet,
+    loadedSportsSet,
+    allowedSet,
   ]);
 
-  const handleMapClick = () => alert("Kaart tuleb hiljem 😄");
+  const handleMapClick = () => {
+    setShowMap((v) => {
+      const next = !v;
+      if (!v) {
+        // wait one tick so DOM renders, then scroll
+        setTimeout(() => {
+          document
+            .getElementById("events-map")
+            ?.scrollIntoView({ behavior: "smooth" });
+        }, 0);
+      }
+      return next;
+    });
+  };
+
+  // 2) Map point selection (YOU will adjust field names once backend returns them)
+  const getEventPoint = (e) => {
+    // preferred: venue coords
+    if (e.venue_lat != null && e.venue_lng != null) {
+      const lat = Number(e.venue_lat);
+      const lng = Number(e.venue_lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng))
+        return { point: { lat, lng }, pointSource: "venue" };
+    }
+    // fallback: city coords
+    if (e.city_lat != null && e.city_lng != null) {
+      const lat = Number(e.city_lat);
+      const lng = Number(e.city_lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng))
+        return { point: { lat, lng }, pointSource: "city" };
+    }
+    return null;
+  };
+
+  const haversineKm = (a, b) => {
+    const R = 6371;
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+    const lat1 = (a.lat * Math.PI) / 180;
+    const lat2 = (b.lat * Math.PI) / 180;
+
+    const s1 = Math.sin(dLat / 2);
+    const s2 = Math.sin(dLng / 2);
+
+    const h = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  // 3) Build events that can be mapped
+  const eventsWithPoints = useMemo(() => {
+    return visibleEvents
+      .map((e) => {
+        const info = getEventPoint(e);
+        if (!info) return null;
+        return { ...e, ...info };
+      })
+      .filter(Boolean);
+  }, [visibleEvents]);
+
+  // 4) Apply radius filter (only when userPos exists)
+  const radiusFilteredEvents = useMemo(() => {
+    if (!userPos) return visibleEvents;
+
+    // If radius is enabled, it usually makes sense to only show events with coords.
+    // If you prefer to keep "no coords" events visible, tell me and we’ll tweak it.
+    return visibleEvents.filter((e) => {
+      const info = getEventPoint(e);
+      if (!info) return false;
+      return haversineKm(userPos, info.point) <= radiusKm;
+    });
+  }, [visibleEvents, userPos, radiusKm]);
+
+  const groupedMapEvents = useMemo(() => {
+    const map = new Map();
+
+    for (const e of eventsWithPoints) {
+      // round to avoid tiny decimal differences causing separate keys
+      const key = `${e.point.lat.toFixed(6)},${e.point.lng.toFixed(6)}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          point: e.point,
+          pointSource: e.pointSource,
+          venue: e.venue,
+          city: e.city,
+          events: [],
+        });
+      }
+      map.get(key).events.push(e);
+    }
+
+    // sort events in each group (by date/time)
+    for (const g of map.values()) {
+      g.events.sort((a, b) => {
+        const aDT = new Date(
+          `${String(a.date).slice(0, 10)}T${a.time || "00:00"}`
+        );
+        const bDT = new Date(
+          `${String(b.date).slice(0, 10)}T${b.time || "00:00"}`
+        );
+        return aDT - bDT;
+      });
+    }
+
+    return Array.from(map.values());
+  }, [eventsWithPoints]);
+
+  const handlePickUserPos = (pos) => {
+    setUserPos(pos);
+    setPickMode(false);
+  };
 
   return (
     <div className="wrapper">
@@ -155,13 +280,42 @@ export default function Homepage() {
         cityFilter={cityFilter}
         setCityFilter={setCityFilter}
         cityOptions={cityOptions}
+        showMap={showMap}
+        onMapClick={handleMapClick}
         dateFilter={dateFilter}
         setDateFilter={setDateFilter}
-        onMapClick={handleMapClick}
         onLeagueStateChange={setLeagueState}
       />
+      {showMap && (
+        <>
+          <MapFilterBar
+            userPos={userPos}
+            setUserPos={setUserPos}
+            pickMode={pickMode}
+            setPickMode={setPickMode}
+            radiusKm={radiusKm}
+            setRadiusKm={setRadiusKm}
+          />
 
-      <EventsTable events={visibleEvents} />
+          <div id="events-map">
+            <EventsMap
+              groups={
+                userPos
+                  ? groupedMapEvents.filter(
+                      (g) => haversineKm(userPos, g.point) <= radiusKm
+                    )
+                  : groupedMapEvents
+              }
+              userPos={userPos}
+              pickMode={pickMode}
+              onPickUserPos={handlePickUserPos}
+              radiusKm={radiusKm}
+            />
+          </div>
+        </>
+      )}
+
+      <EventsTable events={radiusFilteredEvents} />
     </div>
   );
 }
